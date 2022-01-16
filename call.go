@@ -1,6 +1,10 @@
 package tgcalls
 
-import "github.com/gotd/td/tg"
+import (
+	"fmt"
+
+	"github.com/gotd/td/tg"
+)
 
 func (calls *TGCalls) Stream(channel *tg.InputChannel, file string) error {
 	if !calls.running {
@@ -9,10 +13,12 @@ func (calls *TGCalls) Stream(channel *tg.InputChannel, file string) error {
 	_, err := calls.conn.Dispatch(
 		"stream",
 		map[string]interface{}{
-			"chatId":     channel.ChannelID,
-			"accessHash": channel.AccessHash,
-			"isChat":     false,
-			"file":       file,
+			"id":   fmt.Sprint(channel.ChannelID),
+			"file": file,
+			"joinCallParams": map[string]interface{}{
+				"accessHash": fmt.Sprint(channel.AccessHash),
+				"isChannel":  true,
+			},
 		},
 	)
 	return err
@@ -25,9 +31,11 @@ func (calls *TGCalls) StreamChat(chatId int, file string) error {
 	_, err := calls.conn.Dispatch(
 		"stream",
 		map[string]interface{}{
-			"chatId": chatId,
-			"isChat": true,
-			"file":   file,
+			"id":   fmt.Sprint(chatId),
+			"file": file,
+			"joinCallParams": map[string]interface{}{
+				"isChannel": false,
+			},
 		},
 	)
 	return err
@@ -39,7 +47,7 @@ func (calls *TGCalls) Mute(chatId int64) (int, error) {
 	}
 	result, err := calls.conn.Dispatch(
 		"mute",
-		map[string]interface{}{"chatId": chatId},
+		map[string]interface{}{"id": fmt.Sprint(chatId)},
 	)
 	if err != nil {
 		return Err, err
@@ -53,7 +61,7 @@ func (calls *TGCalls) Unmute(chatId int64) (int, error) {
 	}
 	result, err := calls.conn.Dispatch(
 		"unmute",
-		map[string]interface{}{"chatId": chatId},
+		map[string]interface{}{"id": fmt.Sprint(chatId)},
 	)
 	if err != nil {
 		return Err, err
@@ -67,7 +75,7 @@ func (calls *TGCalls) Pause(chatId int64) (int, error) {
 	}
 	result, err := calls.conn.Dispatch(
 		"pause",
-		map[string]interface{}{"chatId": chatId},
+		map[string]interface{}{"id": fmt.Sprint(chatId)},
 	)
 	if err != nil {
 		return Err, err
@@ -81,7 +89,7 @@ func (calls *TGCalls) Resume(chatId int64) (int, error) {
 	}
 	result, err := calls.conn.Dispatch(
 		"resume",
-		map[string]interface{}{"chatId": chatId},
+		map[string]interface{}{"id": fmt.Sprint(chatId)},
 	)
 	if err != nil {
 		return Err, err
@@ -95,7 +103,7 @@ func (calls *TGCalls) Stop(chatId int64) (int, error) {
 	}
 	result, err := calls.conn.Dispatch(
 		"stop",
-		map[string]interface{}{"chatId": chatId},
+		map[string]interface{}{"id": fmt.Sprint(chatId)},
 	)
 	if err != nil {
 		return Err, err

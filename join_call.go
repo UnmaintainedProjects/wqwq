@@ -2,20 +2,25 @@ package tgcalls
 
 import (
 	"encoding/json"
+	"strconv"
 
 	"github.com/gotd/td/tg"
 )
 
 func (calls *TGCalls) joinCall(params map[string]interface{}) (string, error) {
-	chatIdNumber, ok := params["chatId"].(json.Number)
+	idString, ok := params["id"].(string)
 	if !ok {
 		return "", ErrUnexpectedType
 	}
-	chatId, err := chatIdNumber.Int64()
+	id, err := strconv.ParseInt(idString, 10, 64)
 	if err != nil {
 		return "", err
 	}
-	isChat, ok := params["isChat"].(bool)
+	joinCallParams, ok := params["joinCallParams"].(map[string]interface{})
+	if !ok {
+		return "", ErrUnexpectedType
+	}
+	isChannel, ok := joinCallParams["isChannel"].(bool)
 	if !ok {
 		return "", ErrUnexpectedType
 	}
@@ -24,30 +29,30 @@ func (calls *TGCalls) joinCall(params map[string]interface{}) (string, error) {
 		return "", ErrUnexpectedType
 	}
 	var fullChat tg.ChatFullClass
-	if isChat {
-		full, err := calls.api.MessagesGetFullChat(
-			calls.ctx,
-			chatId,
-		)
-		if err != nil {
-			return "", err
-		}
-		fullChat = full.FullChat
-	} else {
-		accessHashNumber, ok := params["accessHash"].(json.Number)
+	if isChannel {
+		accessHashString, ok := joinCallParams["accessHash"].(string)
 		if !ok {
 			return "", ErrUnexpectedType
 		}
-		accessHash, err := accessHashNumber.Int64()
+		accessHash, err := strconv.ParseInt(accessHashString, 10, 64)
 		if err != nil {
 			return "", err
 		}
 		full, err := calls.api.ChannelsGetFullChannel(
 			calls.ctx,
 			&tg.InputChannel{
-				ChannelID:  chatId,
+				ChannelID:  id,
 				AccessHash: accessHash,
 			},
+		)
+		if err != nil {
+			return "", err
+		}
+		fullChat = full.FullChat
+	} else {
+		full, err := calls.api.MessagesGetFullChat(
+			calls.ctx,
+			id,
 		)
 		if err != nil {
 			return "", err

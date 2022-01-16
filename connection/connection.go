@@ -2,7 +2,6 @@ package connection
 
 import (
 	"bufio"
-	"bytes"
 	"crypto/rand"
 	"encoding/json"
 	"errors"
@@ -25,9 +24,7 @@ type Data struct {
 
 func data(line []byte) (Data, bool) {
 	r := Data{}
-	decoder := json.NewDecoder(bytes.NewBuffer(line))
-	decoder.UseNumber()
-	err := decoder.Decode(&r)
+	err := json.Unmarshal(line, &r)
 	if err != nil {
 		return r, false
 	}
@@ -45,9 +42,7 @@ type Response struct {
 
 func response(line []byte) (Response, bool) {
 	r := Response{}
-	decoder := json.NewDecoder(bytes.NewBuffer(line))
-	decoder.UseNumber()
-	err := decoder.Decode(&r)
+	err := json.Unmarshal(line, &r)
 	if err != nil {
 		return r, false
 	}
