@@ -25,7 +25,9 @@ type Data struct {
 
 func data(line []byte) (Data, bool) {
 	r := Data{}
-	err := json.Unmarshal(line, &r)
+	decoder := json.NewDecoder(bytes.NewBuffer(line))
+	decoder.UseNumber()
+	err := decoder.Decode(&r)
 	if err != nil {
 		return r, false
 	}
