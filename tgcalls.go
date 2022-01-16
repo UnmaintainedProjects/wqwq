@@ -28,7 +28,6 @@ const (
 )
 
 type TGCalls struct {
-	GetAccessHash func(chatId int64) int64
 	api           *tg.Client
 	ctx           context.Context
 	cmd           *exec.Cmd
