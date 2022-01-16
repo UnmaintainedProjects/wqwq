@@ -4,38 +4,49 @@ import (
 	"encoding/json"
 
 	"github.com/gotd/td/tg"
-	"github.com/mitchellh/mapstructure"
 )
 
-type joinCallParams struct {
-	chatId     int64
-	accessHash int64
-	isChat     bool
-	payload    map[string]interface{}
-}
-
-func (calls *TGCalls) joinCall(params_ map[string]interface{}) (string, error) {
-	var params joinCallParams
-	err := mapstructure.Decode(params_, &params)
+func (calls *TGCalls) joinCall(params map[string]interface{}) (string, error) {
+	chatIdNumber, ok := params["chatId"].(json.Number)
+	if !ok {
+		return "", ErrUnexpectedType
+	}
+	chatId, err := chatIdNumber.Int64()
 	if err != nil {
 		return "", err
 	}
+	isChat, ok := params["isChat"].(bool)
+	if !ok {
+		return "", ErrUnexpectedType
+	}
+	payload, ok := params["payload"].(map[string]interface{})
+	if !ok {
+		return "", ErrUnexpectedType
+	}
 	var fullChat tg.ChatFullClass
-	if params.isChat {
+	if isChat {
 		full, err := calls.api.MessagesGetFullChat(
 			calls.ctx,
-			params.chatId,
+			chatId,
 		)
 		if err != nil {
 			return "", err
 		}
 		fullChat = full.FullChat
 	} else {
+		accessHashNumber, ok := params["accessHash"].(json.Number)
+		if !ok {
+			return "", ErrUnexpectedType
+		}
+		accessHash, err := accessHashNumber.Int64()
+		if err != nil {
+			return "", err
+		}
 		full, err := calls.api.ChannelsGetFullChannel(
 			calls.ctx,
 			&tg.InputChannel{
-				ChannelID:  params.chatId,
-				AccessHash: params.accessHash,
+				ChannelID:  chatId,
+				AccessHash: accessHash,
 			},
 		)
 		if err != nil {
@@ -48,14 +59,14 @@ func (calls *TGCalls) joinCall(params_ map[string]interface{}) (string, error) {
 		return "", ErrNoCall
 	}
 	result := map[string]interface{}{
-		"ufrag": params.payload["ufrag"],
-		"pwd":   params.payload["pwd"],
+		"ufrag": payload["ufrag"],
+		"pwd":   payload["pwd"],
 		"fingerprints": []map[string]interface{}{{
-			"hash":        params.payload["hash"],
-			"setup":       params.payload["setup"],
-			"fingerprint": params.payload["fingerprint"],
+			"hash":        payload["hash"],
+			"setup":       payload["setup"],
+			"fingerprint": payload["fingerprint"],
 		}},
-		"ssrc": params.payload["source"],
+		"ssrc": payload["source"],
 	}
 	data, err := json.Marshal(result)
 	if err != nil {
