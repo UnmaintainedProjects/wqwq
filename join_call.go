@@ -7,7 +7,12 @@ import (
 )
 
 func (calls *TGCalls) joinCall(params map[string]interface{}) (string, error) {
-	chatId, ok := params["chatId"].(float64)
+	chatIdFloat, ok := params["chatId"].(float64)
+	if !ok {
+		return "", ErrUnexpectedType
+	}
+	chatId := int64(chatIdFloat)
+	isChat, ok := params["isChat"].(bool)
 	if !ok {
 		return "", ErrUnexpectedType
 	}
@@ -15,17 +20,35 @@ func (calls *TGCalls) joinCall(params map[string]interface{}) (string, error) {
 	if !ok {
 		return "", ErrUnexpectedType
 	}
-	fullChannel, err := calls.api.ChannelsGetFullChannel(
-		calls.ctx,
-		&tg.InputChannel{
-			ChannelID:  int64(chatId),
-			AccessHash: calls.GetAccessHash(int64(chatId)),
-		},
-	)
-	if err != nil {
-		return "", err
+	var fullChat tg.ChatFullClass
+	if isChat {
+		full, err := calls.api.MessagesGetFullChat(
+			calls.ctx,
+			chatId,
+		)
+		if err != nil {
+			return "", err
+		}
+		fullChat = full.FullChat
+	} else {
+		accessHashFloat, ok := params["accessHash"].(float64)
+		if !ok {
+			return "", ErrUnexpectedType
+		}
+		accessHash := int64(accessHashFloat)
+		full, err := calls.api.ChannelsGetFullChannel(
+			calls.ctx,
+			&tg.InputChannel{
+				ChannelID:  chatId,
+				AccessHash: accessHash,
+			},
+		)
+		if err != nil {
+			return "", err
+		}
+		fullChat = full.FullChat
 	}
-	call, ok := fullChannel.FullChat.GetCall()
+	call, ok := fullChat.GetCall()
 	if !ok {
 		return "", ErrNoCall
 	}
