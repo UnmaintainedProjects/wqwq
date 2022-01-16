@@ -44,7 +44,7 @@ func (calls *TGCalls) Mute(chatId int64) (int, error) {
 	if err != nil {
 		return Err, err
 	}
-	return int(result.(int64)), nil
+	return int(result.(float64)), nil
 }
 
 func (calls *TGCalls) Unmute(chatId int64) (int, error) {
@@ -58,7 +58,7 @@ func (calls *TGCalls) Unmute(chatId int64) (int, error) {
 	if err != nil {
 		return Err, err
 	}
-	return int(result.(int64)), nil
+	return int(result.(float64)), nil
 }
 
 func (calls *TGCalls) Pause(chatId int64) (int, error) {
@@ -72,7 +72,7 @@ func (calls *TGCalls) Pause(chatId int64) (int, error) {
 	if err != nil {
 		return Err, err
 	}
-	return int(result.(int64)), nil
+	return int(result.(float64)), nil
 }
 
 func (calls *TGCalls) Resume(chatId int64) (int, error) {
@@ -86,7 +86,7 @@ func (calls *TGCalls) Resume(chatId int64) (int, error) {
 	if err != nil {
 		return Err, err
 	}
-	return int(result.(int64)), nil
+	return int(result.(float64)), nil
 }
 
 func (calls *TGCalls) Stop(chatId int64) (int, error) {
@@ -100,5 +100,5 @@ func (calls *TGCalls) Stop(chatId int64) (int, error) {
 	if err != nil {
 		return Err, err
 	}
-	return int(result.(int64)), nil
+	return int(result.(float64)), nil
 }
