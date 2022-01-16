@@ -2,55 +2,13 @@ package connection
 
 import (
 	"bufio"
-	"crypto/rand"
 	"encoding/json"
 	"errors"
 	"io"
-	"strconv"
 	"sync"
 )
 
 var ErrNotStarted = errors.New("connection not started")
-
-type Params = map[string]interface{}
-
-type Handler = func(data Data) (interface{}, error)
-
-type Data struct {
-	Id     string `json:"id"`
-	Event  string `json:"event"`
-	Params Params `json:"params"`
-}
-
-func data(line []byte) (Data, bool) {
-	r := Data{}
-	err := json.Unmarshal(line, &r)
-	if err != nil {
-		return r, false
-	}
-	if r.Event == "" {
-		return r, false
-	}
-	return r, true
-}
-
-type Response struct {
-	Id     string      `json:"id"`
-	Ok     bool        `json:"ok"`
-	Result interface{} `json:"result"`
-}
-
-func response(line []byte) (Response, bool) {
-	r := Response{}
-	err := json.Unmarshal(line, &r)
-	if err != nil {
-		return r, false
-	}
-	if r.Result == nil {
-		return r, false
-	}
-	return r, true
-}
 
 type Connection struct {
 	input    io.Reader
@@ -80,29 +38,19 @@ func (c *Connection) Stop() {
 	c.running = false
 }
 
-func id() (string, error) {
-	s := ""
-	b := make([]byte, 10)
-	_, err := rand.Read(b)
-	if err != nil {
-		return s, err
-	}
-	for _, i := range b {
-		s += strconv.Itoa(int(i))
-	}
-	return s, nil
-}
-
-func (c *Connection) Dispatch(event string, params Params) (interface{}, error) {
+func (c *Connection) Dispatch(method string, params Params) (interface{}, error) {
 	r := Response{}
 	if !c.running {
 		return r, ErrNotStarted
 	}
-	id, err := id()
+	if params == nil {
+		params = map[string]interface{}{}
+	}
+	id, err := getRandomId()
 	if err != nil {
 		return r, err
 	}
-	data, err := json.Marshal(Data{Id: id, Event: event, Params: params})
+	data, err := json.Marshal(Request{Id: id, Method: method, Params: params})
 	if err != nil {
 		return r, err
 	}
@@ -133,8 +81,8 @@ func (c *Connection) Respond(id string, ok bool, result interface{}) error {
 	return err
 }
 
-func (c *Connection) Handle(event string, handler Handler) {
-	c.handlers[event] = handler
+func (c *Connection) Handle(method string, handler Handler) {
+	c.handlers[method] = handler
 }
 
 func (c *Connection) worker() {
@@ -153,8 +101,8 @@ func (c *Connection) worker() {
 				return
 			}
 			line = line[:len(line)-1]
-			if d, ok := data(line); ok {
-				if handler, ok := c.handlers[d.Event]; ok {
+			if d, ok := isRequest(line); ok {
+				if handler, ok := c.handlers[d.Method]; ok {
 					result, err := handler(d)
 					if err != nil {
 						c.Respond(d.Id, false, err.Error())
@@ -162,7 +110,7 @@ func (c *Connection) worker() {
 						c.Respond(d.Id, true, result)
 					}
 				}
-			} else if r, ok := response(line); ok {
+			} else if r, ok := isResponse(line); ok {
 				if channel, ok := c.channels.Load(r.Id); ok {
 					channel.(chan Response) <- r
 					c.channels.Delete(r.Id)

@@ -1,3 +1,3 @@
 # gotgcalls (WIP)
 
-Letting you interact with Telegram calls through Golang.
+Interact with Telegram calls using Go.

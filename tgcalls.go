@@ -10,13 +10,6 @@ import (
 	"github.com/gotgcalls/tgcalls/connection"
 )
 
-var (
-	ErrNotRunning     = errors.New("tgcalls not running")
-	ErrUnexpectedType = errors.New("got an unexpected type")
-	ErrNoCall         = errors.New("no active call in the provided chat")
-	ErrNoAccessHash   = errors.New("no access hash for the provided chat")
-)
-
 const (
 	Ok           = 0
 	NotMuted     = 1
@@ -27,25 +20,70 @@ const (
 	Err          = 3
 )
 
+var (
+	DefaultName = "npx"
+	DefaultArgs = []string{"gotgcalls-server"}
+)
+
+var (
+	ErrNotRunning     = errors.New("tgcalls not running")
+	ErrUnexpectedType = errors.New("got an unexpected type")
+	ErrNoCall         = errors.New("no active call in the provided chat")
+	ErrNoAccessHash   = errors.New("no access hash for the provided chat")
+)
+
 type TGCalls struct {
-	api           *tg.Client
-	ctx           context.Context
-	cmd           *exec.Cmd
-	out           io.ReadCloser
-	in            io.WriteCloser
-	conn          *connection.Connection
-	running       bool
+	ctx  context.Context
+	chat *tg.InputChannel
+	api  *tg.Client
+	opts *TGCallsOpts
+
+	cmd  *exec.Cmd
+	conn *connection.Connection
+	in   io.WriteCloser
+	out  io.ReadCloser
+
+	running bool
 }
 
-func New(api *tg.Client, ctx context.Context) *TGCalls {
-	return &TGCalls{api: api, ctx: ctx}
+type TGCallsOpts struct {
+	Cmd        *TGCallsCmdOpts
+	JoinAs     tg.InputPeerClass
+	InviteHash string
+}
+
+type TGCallsCmdOpts struct {
+	Name string
+	Args []string
+}
+
+func New(
+	ctx context.Context,
+	chat *tg.InputChannel,
+	api *tg.Client,
+	opts *TGCallsOpts,
+) *TGCalls {
+	return &TGCalls{
+		ctx:  ctx,
+		chat: chat,
+		api:  api,
+		opts: opts,
+	}
 }
 
 func Start(calls *TGCalls) error {
 	if calls.running {
 		return nil
 	}
-	cmd := exec.Command("npx", "gotgcalls-server")
+	name := DefaultName
+	args := DefaultArgs
+	if calls.opts != nil {
+		if calls.opts.Cmd != nil {
+			name = calls.opts.Cmd.Name
+			args = calls.opts.Cmd.Args
+		}
+	}
+	cmd := exec.Command(name, args...)
 	out, err := cmd.StdoutPipe()
 	if err != nil {
 		return err
@@ -62,9 +100,12 @@ func Start(calls *TGCalls) error {
 	calls.out = out
 	calls.in = in
 	calls.conn = connection.New(out, in)
-	calls.conn.Handle("joinCall", func(data connection.Data) (interface{}, error) {
-		return calls.joinCall(data.Params)
-	})
+	calls.conn.Handle(
+		"joinCall",
+		func(request connection.Request) (interface{}, error) {
+			return calls.joinCall(request.Params)
+		},
+	)
 	calls.conn.Start()
 	calls.running = true
 	return nil

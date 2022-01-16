@@ -2,64 +2,28 @@ package tgcalls
 
 import (
 	"encoding/json"
-	"strconv"
 
 	"github.com/gotd/td/tg"
 )
 
 func (calls *TGCalls) joinCall(params map[string]interface{}) (string, error) {
-	idString, ok := params["id"].(string)
-	if !ok {
-		return "", ErrUnexpectedType
-	}
-	id, err := strconv.ParseInt(idString, 10, 64)
-	if err != nil {
-		return "", err
-	}
-	joinCallParams, ok := params["joinCallParams"].(map[string]interface{})
-	if !ok {
-		return "", ErrUnexpectedType
-	}
-	isChannel, ok := joinCallParams["isChannel"].(bool)
-	if !ok {
-		return "", ErrUnexpectedType
-	}
 	payload, ok := params["payload"].(map[string]interface{})
 	if !ok {
 		return "", ErrUnexpectedType
 	}
-	var fullChat tg.ChatFullClass
-	if isChannel {
-		accessHashString, ok := joinCallParams["accessHash"].(string)
-		if !ok {
-			return "", ErrUnexpectedType
+	inviteHash := ""
+	var joinAs tg.InputPeerClass = &tg.InputPeerSelf{}
+	if calls.opts != nil {
+		inviteHash = calls.opts.InviteHash
+		if calls.opts.JoinAs != nil {
+			joinAs = calls.opts.JoinAs
 		}
-		accessHash, err := strconv.ParseInt(accessHashString, 10, 64)
-		if err != nil {
-			return "", err
-		}
-		full, err := calls.api.ChannelsGetFullChannel(
-			calls.ctx,
-			&tg.InputChannel{
-				ChannelID:  id,
-				AccessHash: accessHash,
-			},
-		)
-		if err != nil {
-			return "", err
-		}
-		fullChat = full.FullChat
-	} else {
-		full, err := calls.api.MessagesGetFullChat(
-			calls.ctx,
-			id,
-		)
-		if err != nil {
-			return "", err
-		}
-		fullChat = full.FullChat
 	}
-	call, ok := fullChat.GetCall()
+	fullChannel, err := calls.api.ChannelsGetFullChannel(calls.ctx, calls.chat)
+	if err != nil {
+		return "", err
+	}
+	call, ok := fullChannel.FullChat.GetCall()
 	if !ok {
 		return "", ErrNoCall
 	}
@@ -80,12 +44,13 @@ func (calls *TGCalls) joinCall(params map[string]interface{}) (string, error) {
 	updates, err := calls.api.PhoneJoinGroupCall(
 		calls.ctx,
 		&tg.PhoneJoinGroupCallRequest{
-			Call:  call,
-			Muted: false,
+			Call:       call,
+			InviteHash: inviteHash,
+			JoinAs:     joinAs,
+			Muted:      false,
 			Params: tg.DataJSON{
 				Data: string(data),
 			},
-			JoinAs: &tg.InputPeerSelf{},
 		},
 	)
 	if err != nil {
