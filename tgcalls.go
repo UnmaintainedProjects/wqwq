@@ -44,6 +44,8 @@ type TGCalls struct {
 	out  io.ReadCloser
 
 	running bool
+
+	OnFinish func()
 }
 
 type TGCallsOpts struct {
@@ -106,6 +108,12 @@ func Start(calls *TGCalls) error {
 			return calls.joinCall(request.Params)
 		},
 	)
+	calls.conn.Handle("finish", func(request connection.Request) (interface{}, error) {
+		if calls.OnFinish != nil {
+			calls.OnFinish()
+		}
+		return nil, nil
+	})
 	calls.conn.Start()
 	calls.running = true
 	return nil
