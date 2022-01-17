@@ -1,12 +1,12 @@
 package tgcalls
 
-func (calls *TGCalls) Stop() (int, error) {
+func (calls *TGCalls) Stop() (bool, error) {
 	if !calls.running {
-		return Err, ErrNotRunning
+		return false, ErrNotRunning
 	}
 	result, err := calls.conn.Dispatch("stop", nil)
 	if err != nil {
-		return Err, err
+		return false, err
 	}
-	return int(result.(float64)), nil
+	return result.(bool), nil
 }
