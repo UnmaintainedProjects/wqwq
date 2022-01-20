@@ -36,6 +36,12 @@ func (calls *TGCalls) joinCall(params map[string]interface{}) (string, error) {
 			"fingerprint": payload["fingerprint"],
 		}},
 		"ssrc": payload["source"],
+		"ssrc-groups": []interface{}{
+			map[string]interface{}{
+				"semantics": "FID",
+				"groups":    payload["sourceGroups"],
+			},
+		},
 	}
 	data, err := json.Marshal(result)
 	if err != nil {
@@ -44,10 +50,11 @@ func (calls *TGCalls) joinCall(params map[string]interface{}) (string, error) {
 	updates, err := calls.api.PhoneJoinGroupCall(
 		calls.ctx,
 		&tg.PhoneJoinGroupCallRequest{
-			Call:       call,
-			InviteHash: inviteHash,
-			JoinAs:     joinAs,
-			Muted:      false,
+			Call:         call,
+			Muted:        false,
+			VideoStopped: false,
+			JoinAs:       joinAs,
+			InviteHash:   inviteHash,
 			Params: tg.DataJSON{
 				Data: string(data),
 			},
